@@ -1,0 +1,5 @@
+ Volume in drive C has no label.
+ Volume Serial Number is C038-8FA5
+
+ Directory of C:\Users\johan\source\repos\Scanner\Middleware\Opencv\lib
+

@@ -1,0 +1,40 @@
+﻿  Grab.cpp
+C:\Users\johan\source\repos\Scanner\Grab.cpp(47,31): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+          and
+          [
+              _Tp=int
+          ]
+C:\Users\johan\source\repos\Scanner\Grab.cpp(46,39): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+          and
+          [
+              _Tp=int
+          ]
+C:\Users\johan\source\repos\Scanner\Grab.cpp(49,31): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+          and
+          [
+              _Tp=int
+          ]
+C:\Users\johan\source\repos\Scanner\Grab.cpp(48,39): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+          and
+          [
+              _Tp=int
+          ]
+C:\Users\johan\source\repos\Scanner\Grab.cpp(140,118): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+C:\Users\johan\source\repos\Scanner\Grab.cpp(156,29): warning C4101: 'ex': unreferenced local variable
+  Scanner.vcxproj -> C:\Users\johan\source\repos\Scanner\x64\Debug\Scanner.exe

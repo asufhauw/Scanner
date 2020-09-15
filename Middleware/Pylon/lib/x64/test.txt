@@ -1,0 +1,6 @@
+GCBase_MD_VC141_v3_1_Basler_pylon.lib
+GenApi_MD_VC141_v3_1_Basler_pylon.lib
+PylonBase_v6_1.lib
+PylonC.lib
+PylonGUI_v6_1.lib
+PylonUtility_v6_1.lib
