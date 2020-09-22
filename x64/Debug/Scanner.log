@@ -1,40 +1,28 @@
 ﻿  Grab.cpp
-C:\Users\johan\source\repos\Scanner\Grab.cpp(47,31): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+C:\Users\dajo\Projects\Scanner\Grab.cpp(49,60): warning C4244: 'argument': conversion from 'float' to '_Tp', possible loss of data
           with
-          [
-              _Tp=float
-          ]
-          and
           [
               _Tp=int
           ]
-C:\Users\johan\source\repos\Scanner\Grab.cpp(46,39): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+C:\Users\dajo\Projects\Scanner\Grab.cpp(49,39): warning C4244: 'argument': conversion from 'float' to '_Tp', possible loss of data
           with
-          [
-              _Tp=float
-          ]
-          and
           [
               _Tp=int
           ]
-C:\Users\johan\source\repos\Scanner\Grab.cpp(49,31): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+C:\Users\dajo\Projects\Scanner\Middleware\zxing\include\zxing\common\Array.h(73,1): warning C4267: 'return': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\dajo\Projects\Scanner\Middleware\zxing\include\zxing\common\Array.h(72): message : while compiling class template member function 'int zxing::Array<T>::size(void) const'
           with
           [
-              _Tp=float
+              T=zxing::Ref<zxing::ResultPoint>
           ]
-          and
-          [
-              _Tp=int
-          ]
-C:\Users\johan\source\repos\Scanner\Grab.cpp(48,39): warning C4244: 'argument': conversion from '_Tp' to '_Tp', possible loss of data
+C:\Users\dajo\Projects\Scanner\Grab.cpp(142): message : see reference to function template instantiation 'int zxing::Array<T>::size(void) const' being compiled
           with
           [
-              _Tp=float
+              T=zxing::Ref<zxing::ResultPoint>
           ]
-          and
+C:\Users\dajo\Projects\Scanner\Grab.cpp(142): message : see reference to class template instantiation 'zxing::Array<T>' being compiled
+          with
           [
-              _Tp=int
+              T=zxing::Ref<zxing::ResultPoint>
           ]
-C:\Users\johan\source\repos\Scanner\Grab.cpp(140,118): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
-C:\Users\johan\source\repos\Scanner\Grab.cpp(156,29): warning C4101: 'ex': unreferenced local variable
-  Scanner.vcxproj -> C:\Users\johan\source\repos\Scanner\x64\Debug\Scanner.exe
+  Scanner.vcxproj -> C:\Users\dajo\Projects\Scanner\x64\Debug\Scanner.exe

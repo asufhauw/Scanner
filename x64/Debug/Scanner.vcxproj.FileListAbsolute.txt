@@ -1,2 +1,4 @@
 C:\Users\johan\source\repos\Scanner\x64\Debug\Scanner.exe
 C:\Users\johan\source\repos\Scanner\x64\Debug\Scanner.pdb
+C:\Users\dajo\Projects\Scanner\x64\Debug\Scanner.exe
+C:\Users\dajo\Projects\Scanner\x64\Debug\Scanner.pdb
