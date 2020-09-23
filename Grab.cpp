@@ -180,6 +180,7 @@ void decoder(cv::Mat image)
     }
     catch (const zxing::ReaderException& e) {
         cerr << e.what() << state << " (ignoring)" << endl;
+      
     }
     catch (const zxing::IllegalArgumentException& e) {
         cerr << e.what() << state << " (ignoring)" << endl;
@@ -197,13 +198,58 @@ void decoder(cv::Mat image)
 
 int main(int argc, char* argv[])
 {
-   
+    std::cout << "HELLO WORD" << std::endl;
+    // Find all contours in the image
+    vector<vector<cv::Point> > contours;
+    vector<cv::Vec4i> hierarchy;
+    cv::Mat testImg, testImgGray, testImg1, testImg1Gray, testimgthreas;
+    testImg = cv::imread("C:\\Users\\dajo\\Projects\\Scanner\\datamatrix10.png");
+    cv::cvtColor(testImg, testImgGray, cv::COLOR_BGR2GRAY);
+    cv::threshold(testImgGray, testimgthreas, 100, 255, cv::THRESH_BINARY);
+    // Find all contours in the image
+    findContours(testimgthreas, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    cv::Point2f rect_points[4];
+    cv::Mat boxPoints2f, boxPointsCov;
+    cv::Rect rect;
+    for (size_t i = 0; i < contours.size(); i++) {
+        // Vertical rectangle
+        if (contours[i].size() < 200) continue;
 
+        rect = boundingRect(contours[i]);
+
+        cv::Mat boxed = cv::Mat(testImgGray, rect);
+
+        cv::Point centerpoint = cv::Point(boxed.cols/2,boxed.rows / 2);
+
+        double angle = minAreaRect(contours[i]).angle;
+        double scale = 1;
+        cv::Mat rot_mat = getRotationMatrix2D(centerpoint, angle, scale);
+        cv::Mat warp_rotate_dst;
+        warpAffine(boxed, boxed, rot_mat, boxed.size());
+        //cv::waitKey(0);
+       // cv::imshow("test", boxed);
+
+        //cv::waitKey(0);
+        decoder(boxed);
+    }
+   
+    // Draw all the contours
+    //drawContours(testImg, contours, -1, cv::Scalar(0, 220, 0), 3);
+    cv::imshow("test", testImg);
+    cv::waitKey(0);
+    decoder(testImg);
+    testImg1 = cv::imread("C:\\Users\\dajo\\Projects\\Scanner\\datamatrix5.png");
+    cv::cvtColor(testImg1, testImg1Gray, cv::COLOR_BGR2GRAY);
+    findContours(testImg1Gray, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
+    // Draw all the contours
+    drawContours(testImg1, contours, -1, cv::Scalar(0, 220, 0), 3);
+    cv::imshow("test", testImg1);
+    cv::waitKey(0);
+    decoder(testImg1);
     // Before using any pylon methods, the pylon runtime must be initialized. 
     PylonInitialize();
     try
     {
-
         // Create an instant camera object with the camera device found first.
         CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
 
