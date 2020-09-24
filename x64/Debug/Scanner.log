@@ -15,12 +15,12 @@ C:\Users\dajo\Projects\Scanner\Middleware\zxing\include\zxing\common\Array.h(72)
           [
               T=zxing::Ref<zxing::ResultPoint>
           ]
-C:\Users\dajo\Projects\Scanner\Grab.cpp(142): message : see reference to function template instantiation 'int zxing::Array<T>::size(void) const' being compiled
+C:\Users\dajo\Projects\Scanner\Grab.cpp(235): message : see reference to function template instantiation 'int zxing::Array<T>::size(void) const' being compiled
           with
           [
               T=zxing::Ref<zxing::ResultPoint>
           ]
-C:\Users\dajo\Projects\Scanner\Grab.cpp(142): message : see reference to class template instantiation 'zxing::Array<T>' being compiled
+C:\Users\dajo\Projects\Scanner\Grab.cpp(235): message : see reference to class template instantiation 'zxing::Array<T>' being compiled
           with
           [
               T=zxing::Ref<zxing::ResultPoint>

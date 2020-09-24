@@ -49,6 +49,28 @@ cv::Point toCvPoint(zxing::Ref<zxing::ResultPoint> resultPoint) {
     return cv::Point(resultPoint->getX(), resultPoint->getY());
 }
 
+string type2str(int type) {
+    string r;
+
+    uchar depth = type & CV_MAT_DEPTH_MASK;
+    uchar chans = 1 + (type >> CV_CN_SHIFT);
+
+    switch (depth) {
+    case CV_8U:  r = "8U"; break;
+    case CV_8S:  r = "8S"; break;
+    case CV_16U: r = "16U"; break;
+    case CV_16S: r = "16S"; break;
+    case CV_32S: r = "32S"; break;
+    case CV_32F: r = "32F"; break;
+    case CV_64F: r = "64F"; break;
+    default:     r = "User"; break;
+    }
+
+    r += "C";
+    r += (chans + '0');
+
+    return r;
+}
 
 zxing::Ref<zxing::Result> decode(zxing::Ref<zxing::BinaryBitmap> image, zxing::DecodeHints hints) {
     (void)hints;
@@ -81,7 +103,25 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata)
     }
     else if (event == cv::EVENT_MOUSEMOVE)
     {
-        cout << "Mouse move over the window - position (" << x << ", " << y << ")"  << endl;
+        
+        try
+        {
+            cv::Mat img = *static_cast<cv::Mat*>(userdata);
+            cout << type2str(img.depth()) << endl;
+            try
+            {
+                cout << (int)img.at<cv::uint8_t>(cv::Point(x, y)) << endl;
+            }
+            catch (const std::exception&)
+            {
+                    
+            }
+          //  cout << "Mouse move over the window - position (" << x << ", " << y << ")" << img.at<ushort>(y,x) << endl;
+        }
+        catch (const std::exception& e)
+        {
+            cerr << e.what() << endl;
+        }
 
     }
 }
@@ -97,8 +137,21 @@ void getPoints(int event, int x, int y, int flags, void* userdata)
     }
     else if (event == cv::EVENT_MOUSEMOVE)
     {
-       
-         cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl; //  << img->at<ushort>(y, x)
+        cv::Mat img = *static_cast<cv::Mat*>(userdata);
+        cout << type2str(img.depth()) << endl;
+
+        cout << img.channels() << endl;
+        try
+        {
+           // cv::circle(img, cv::Point(x, y), 2, cv::Scalar(150, 150, 150), 2, 8, 0);
+            cout << img.at<cv::Vec3b>(cv::Point(x,y)) << endl;
+            
+        }
+        catch (const std::exception&)
+        {
+
+        }
+       //  cout << "Mouse move over the window - position (" << x << ", " << y << ")" << endl; //  << img->at<ushort>(y, x)
     }
     else if (event==cv::EVENT_LBUTTONUP)
     {
@@ -112,35 +165,74 @@ void getPoints(int event, int x, int y, int flags, void* userdata)
 
 
 
+void fixImage(cv::Mat img,cv::Mat oImg)
+{
+    // Find all contours in the image
+    vector<vector<cv::Point> > contours;
+    vector<cv::Vec4i> hierarchy;
+    cv::Mat imgGray;
+
+    cv::cvtColor(img, imgGray, cv::COLOR_BGR2GRAY);
+
+    cv::threshold(imgGray, imgGray, 180, 255, cv::THRESH_BINARY);
+
+    while (cv::waitKey(10) <= 0)
+        cv::imshow("window", imgGray);
+
+
+    // Find all contours in the image
+    findContours(imgGray, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    cv::Point2f rect_points[4];
+    cv::Mat boxPoints2f, boxPointsCov;
+    cv::Rect rect;
+    for (size_t i = 0; i < contours.size(); i++) {
+        // Vertical rectangle
+        if (contours[i].size() < 200) continue;
+
+        rect = boundingRect(contours[i]);
+
+        cv::Mat boxed = cv::Mat(imgGray, rect);
+
+        while (cv::waitKey(10) <= 0)
+            cv::imshow("window", boxed);
+        cv::Point centerpoint = cv::Point(boxed.cols / 2, boxed.rows / 2);
+
+        double angle = (int)minAreaRect(contours[i]).angle % 90;
+        double scale = 1;
+        cv::Mat rot_mat = getRotationMatrix2D(centerpoint, angle, scale);
+        cv::Mat warp_rotate_dst;
+        warpAffine(boxed, boxed, rot_mat, boxed.size());
+        //cv::waitKey(0);
+        cv::imshow("window", boxed);
+
+        cv::waitKey(0);
+        oImg = boxed.clone();
+        return;
+    }
+
+    oImg = imgGray;
+}
 
 
 
-int state = 0;
 void decoder(cv::Mat image)
 {
-
-        
     // Create luminance  source
     try
     {
+        while (cv::waitKey(10) <= 0)
+            cv::imshow("window123", image);
         zxing::Ref<zxing::LuminanceSource> source = MatSource::create(image);
-        state = 1;
         zxing::Ref<zxing::Reader> reader;
-        state = 2;
         reader.reset(new zxing::datamatrix::DataMatrixReader);
-        state = 3;
         zxing::Ref<zxing::Binarizer> binarizer(new zxing::GlobalHistogramBinarizer(source));//HybridBinarizer GlobalHistogramBinarizer
-        state = 4;
         zxing::Ref<zxing::BinaryBitmap> bitmap(new zxing::BinaryBitmap(binarizer)); 
-        state = 5;
         zxing::DecodeHintType hint = zxing::DecodeHints::DATA_MATRIX_HINT | zxing::DecodeHints::TRYHARDER_HINT; // |  zxing::DecodeHints::TRYHARDER_HINT
         //cv::imshow("window", bitmap->getBlackMatrix());
         zxing::Ref<zxing::Result> result(reader->decode(bitmap, zxing::DecodeHints(hint)));
-        state = 6;
 
         // Get result point count
-        int resultPointCount = result->getResultPoints()->size();  
-        state = 7;
+        int resultPointCount = result->getResultPoints()->size(); 
         
         for (int j = 0; j < resultPointCount; j++) {
 
@@ -148,11 +240,9 @@ void decoder(cv::Mat image)
             cv::circle(image, toCvPoint(result->getResultPoints()[j]), 0, cv::Scalar(110, 220, 0), 2);
 
         }
-        state = 8;
 
         // Draw boundary on image
         if (resultPointCount > 1) {
-            state = 9;
             for (int j = 0; j < resultPointCount; j++) {
 
                 // Get start result point
@@ -167,9 +257,8 @@ void decoder(cv::Mat image)
             }
 
         }
-        state = 10;
+
         if (resultPointCount > 0) {
-            state = 11;
             // Draw text
             cv::putText(image, result->getText()->getText(), toCvPoint(result->getResultPoints()[0]), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(110, 220, 0));
             cout << result->getText()->getText() << endl;
@@ -179,73 +268,30 @@ void decoder(cv::Mat image)
         cv::waitKey(0);
     }
     catch (const zxing::ReaderException& e) {
-        cerr << e.what() << state << " (ignoring)" << endl;
+        cerr << e.what() << " (ignoring)" << endl;
       
     }
     catch (const zxing::IllegalArgumentException& e) {
-        cerr << e.what() << state << " (ignoring)" << endl;
+        cerr << e.what() << " (ignoring)" << endl;
     }
     catch (const zxing::Exception& e) {
-        cerr << e.what() << state << " (ignoring)" << endl;
+        cerr << e.what() << " (ignoring)" << endl;
     }
     catch (const std::exception& e) {
-        cerr << e.what() << state << " (ignoring)" << endl;
+        cerr << e.what()  << " (ignoring)" << endl;
     }
-
   
 }
 
 
 int main(int argc, char* argv[])
 {
-    std::cout << "HELLO WORD" << std::endl;
-    // Find all contours in the image
-    vector<vector<cv::Point> > contours;
-    vector<cv::Vec4i> hierarchy;
-    cv::Mat testImg, testImgGray, testImg1, testImg1Gray, testimgthreas;
-    testImg = cv::imread("C:\\Users\\dajo\\Projects\\Scanner\\datamatrix10.png");
-    cv::cvtColor(testImg, testImgGray, cv::COLOR_BGR2GRAY);
-    cv::threshold(testImgGray, testimgthreas, 100, 255, cv::THRESH_BINARY);
-    // Find all contours in the image
-    findContours(testimgthreas, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    cv::Point2f rect_points[4];
-    cv::Mat boxPoints2f, boxPointsCov;
-    cv::Rect rect;
-    for (size_t i = 0; i < contours.size(); i++) {
-        // Vertical rectangle
-        if (contours[i].size() < 200) continue;
+    //cv::Mat testImg1 = cv::imread("C:\\Users\\dajo\\Projects\\Scanner\\datamatrix5.png");
+    //testImg1 = fixImage(testImg1);
+    //cv::imshow("window", testImg1);
+    //cv::waitKey(0);
 
-        rect = boundingRect(contours[i]);
-
-        cv::Mat boxed = cv::Mat(testImgGray, rect);
-
-        cv::Point centerpoint = cv::Point(boxed.cols/2,boxed.rows / 2);
-
-        double angle = minAreaRect(contours[i]).angle;
-        double scale = 1;
-        cv::Mat rot_mat = getRotationMatrix2D(centerpoint, angle, scale);
-        cv::Mat warp_rotate_dst;
-        warpAffine(boxed, boxed, rot_mat, boxed.size());
-        //cv::waitKey(0);
-       // cv::imshow("test", boxed);
-
-        //cv::waitKey(0);
-        decoder(boxed);
-    }
-   
-    // Draw all the contours
-    //drawContours(testImg, contours, -1, cv::Scalar(0, 220, 0), 3);
-    cv::imshow("test", testImg);
-    cv::waitKey(0);
-    decoder(testImg);
-    testImg1 = cv::imread("C:\\Users\\dajo\\Projects\\Scanner\\datamatrix5.png");
-    cv::cvtColor(testImg1, testImg1Gray, cv::COLOR_BGR2GRAY);
-    findContours(testImg1Gray, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
-    // Draw all the contours
-    drawContours(testImg1, contours, -1, cv::Scalar(0, 220, 0), 3);
-    cv::imshow("test", testImg1);
-    cv::waitKey(0);
-    decoder(testImg1);
+    //decoder(testImg1);
     // Before using any pylon methods, the pylon runtime must be initialized. 
     PylonInitialize();
     try
@@ -282,14 +328,10 @@ int main(int argc, char* argv[])
 
         CGrabResultPtr ptrGrabResult;
         // Create a QRCodeDetector Object
-      
-        cv::Mat grey;// = cv::Mat(image, 200, 200);
-
-
         cv::namedWindow("window", 1);
 
         //set the callback function for any mouse event
-        cv::setMouseCallback("window", getPoints, &grey);
+        cv::setMouseCallback("window", getPoints, &image);
         while (camera.IsGrabbing())
         {
             camera.RetrieveResult(5000, ptrGrabResult, TimeoutHandling_ThrowException);
@@ -303,16 +345,18 @@ int main(int argc, char* argv[])
                 image = cv::Mat(ptrGrabResult->GetHeight(), ptrGrabResult->GetWidth(), CV_8UC3, (uint8_t*)pylonImage.GetBuffer());
                
                 // set roi
-               // cv::Mat imageRoi = cv::Mat(image, cv::Rect(cv::Point(739, 400), cv::Point(1060, 700)));
-               
-                cv::cvtColor(image, grey, cv::COLOR_BGR2GRAY);
-
-                cv::rectangle(image, cv::Rect(cv::Point(739, 400), cv::Point(1060, 700)), cv::Scalar(0, 0, 0), 2, 8, 0);
-
                 while(cv::waitKey(10)<= 0)
-                    cv::imshow("window", grey);
-                
-                decoder(grey);
+                    cv::imshow("window", image);
+
+                // Fix the image
+                fixImage(image, image);
+
+                // show result image
+                while (cv::waitKey(10) <= 0)
+                    cv::imshow("window", image);
+
+                // Decode the image
+                decoder(image);
             }
         }
     }
