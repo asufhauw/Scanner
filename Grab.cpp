@@ -27,7 +27,6 @@
 #include <zxing/datamatrix/detector/Detector.h>
 #include <zxing/common/GlobalHistogramBinarizer.h>
 #include <zxing/common/HybridBinarizer.h>
-
 #include <zxing/MatSource.h>
 // Include files to use the pylon API.
 #include <pylon/PylonIncludes.h>
@@ -165,55 +164,6 @@ void getPoints(int event, int x, int y, int flags, void* userdata)
 
 
 
-void fixImage(cv::Mat img,cv::Mat oImg)
-{
-    // Find all contours in the image
-    vector<vector<cv::Point> > contours;
-    vector<cv::Vec4i> hierarchy;
-    cv::Mat imgGray;
-
-    cv::cvtColor(img, imgGray, cv::COLOR_BGR2GRAY);
-
-    cv::threshold(imgGray, imgGray, 180, 255, cv::THRESH_BINARY);
-
-    while (cv::waitKey(10) <= 0)
-        cv::imshow("window", imgGray);
-
-
-    // Find all contours in the image
-    findContours(imgGray, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    cv::Point2f rect_points[4];
-    cv::Mat boxPoints2f, boxPointsCov;
-    cv::Rect rect;
-    for (size_t i = 0; i < contours.size(); i++) {
-        // Vertical rectangle
-        if (contours[i].size() < 200) continue;
-
-        rect = boundingRect(contours[i]);
-
-        cv::Mat boxed = cv::Mat(imgGray, rect);
-
-        while (cv::waitKey(10) <= 0)
-            cv::imshow("window", boxed);
-        cv::Point centerpoint = cv::Point(boxed.cols / 2, boxed.rows / 2);
-
-        double angle = (int)minAreaRect(contours[i]).angle % 90;
-        double scale = 1;
-        cv::Mat rot_mat = getRotationMatrix2D(centerpoint, angle, scale);
-        cv::Mat warp_rotate_dst;
-        warpAffine(boxed, boxed, rot_mat, boxed.size());
-        //cv::waitKey(0);
-        cv::imshow("window", boxed);
-
-        cv::waitKey(0);
-        oImg = boxed.clone();
-        return;
-    }
-
-    oImg = imgGray;
-}
-
-
 
 void decoder(cv::Mat image)
 {
@@ -226,14 +176,14 @@ void decoder(cv::Mat image)
         zxing::Ref<zxing::Reader> reader;
         reader.reset(new zxing::datamatrix::DataMatrixReader);
         zxing::Ref<zxing::Binarizer> binarizer(new zxing::GlobalHistogramBinarizer(source));//HybridBinarizer GlobalHistogramBinarizer
-        zxing::Ref<zxing::BinaryBitmap> bitmap(new zxing::BinaryBitmap(binarizer)); 
+        zxing::Ref<zxing::BinaryBitmap> bitmap(new zxing::BinaryBitmap(binarizer));
         zxing::DecodeHintType hint = zxing::DecodeHints::DATA_MATRIX_HINT | zxing::DecodeHints::TRYHARDER_HINT; // |  zxing::DecodeHints::TRYHARDER_HINT
         //cv::imshow("window", bitmap->getBlackMatrix());
         zxing::Ref<zxing::Result> result(reader->decode(bitmap, zxing::DecodeHints(hint)));
 
         // Get result point count
-        int resultPointCount = result->getResultPoints()->size(); 
-        
+        int resultPointCount = result->getResultPoints()->size();
+
         for (int j = 0; j < resultPointCount; j++) {
 
             // Draw circle
@@ -263,13 +213,13 @@ void decoder(cv::Mat image)
             cv::putText(image, result->getText()->getText(), toCvPoint(result->getResultPoints()[0]), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(110, 220, 0));
             cout << result->getText()->getText() << endl;
         }
-       
+
         cv::imshow("window", image);
         cv::waitKey(0);
     }
     catch (const zxing::ReaderException& e) {
         cerr << e.what() << " (ignoring)" << endl;
-      
+
     }
     catch (const zxing::IllegalArgumentException& e) {
         cerr << e.what() << " (ignoring)" << endl;
@@ -278,12 +228,61 @@ void decoder(cv::Mat image)
         cerr << e.what() << " (ignoring)" << endl;
     }
     catch (const std::exception& e) {
-        cerr << e.what()  << " (ignoring)" << endl;
+        cerr << e.what() << " (ignoring)" << endl;
     }
-  
+
 }
 
+void fixImage(cv::Mat img,cv::Mat oImg)
+{
+    // Find all contours in the image
+    vector<vector<cv::Point> > contours;
+    vector<cv::Vec4i> hierarchy;
+    cv::Mat imgGray, imgthres;
 
+    cv::cvtColor(img, imgGray, cv::COLOR_BGR2GRAY);
+
+    cv::threshold(imgGray, imgthres, 70, 255, cv::THRESH_BINARY);
+
+    while (cv::waitKey(10) <= 0)
+        cv::imshow("window", imgGray);
+
+
+    // Find all contours in the image
+    findContours(imgthres, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    cv::Point2f rect_points[4];
+    cv::Mat boxPoints2f, boxPointsCov;
+    cv::Rect rect;
+    for (size_t i = 0; i < contours.size(); i++) {
+        // Vertical rectangle
+        if (contours[i].size() < 100) continue;
+
+        rect = boundingRect(contours[i]);
+
+        cv::Mat boxed = cv::Mat(imgGray, rect);
+
+        while (cv::waitKey(10) <= 0)
+            cv::imshow("window", boxed);
+        cv::Point centerpoint = cv::Point(boxed.cols / 2, boxed.rows / 2);
+
+        double angle = (int)minAreaRect(contours[i]).angle % 90;
+        double scale = 1;
+        cv::Mat rot_mat = getRotationMatrix2D(centerpoint, angle, scale);
+        cv::Mat warp_rotate_dst;
+        warpAffine(boxed, boxed, rot_mat, boxed.size());
+        //cv::waitKey(0);
+        cv::imshow("window", boxed);
+        cv::waitKey(0);
+
+        decoder(boxed);
+        oImg = boxed.clone();
+        //return;
+    }
+    decoder(imgGray);
+    oImg = imgGray;
+}
+
+#include <pylon/BaslerUniversalInstantCamera.h>
 int main(int argc, char* argv[])
 {
     //cv::Mat testImg1 = cv::imread("C:\\Users\\dajo\\Projects\\Scanner\\datamatrix5.png");
@@ -296,19 +295,28 @@ int main(int argc, char* argv[])
     PylonInitialize();
     try
     {
+       
         // Create an instant camera object with the camera device found first.
         CInstantCamera camera(CTlFactory::GetInstance().CreateFirstDevice());
+        // Configure exposure time and mode
 
         // Print the model name of the camera.
      //   cout << "Using device " << camera.GetDeviceInfo().GetModelName() << endl;
 
         //Get a camera nodemap in order to access camera parameters
         GenApi::INodeMap& nodemap = camera.GetNodeMap();
-
-        camera.Open();
-
         GenApi::CIntegerPtr width = nodemap.GetNode("Width");
         GenApi::CIntegerPtr height = nodemap.GetNode("Height");
+        camera.Open();
+
+
+
+        double d = CFloatParameter(nodemap, "ExposureTimeAbs").GetValue();
+        // Set the exposure time mode to Standard
+        // Note: Available on selected camera models only
+        //CEnumParameter(nodemap, "ExposureTimeMode").SetValue("Standard");
+        // Set the exposure time to 3500 microseconds
+        CFloatParameter(nodemap, "ExposureTimeAbs").SetValue(3500.0);
 
         camera.MaxNumBuffer = 5;
 
@@ -352,11 +360,11 @@ int main(int argc, char* argv[])
                 fixImage(image, image);
 
                 // show result image
-                while (cv::waitKey(10) <= 0)
-                    cv::imshow("window", image);
+            //    while (cv::waitKey(10) <= 0)
+           //         cv::imshow("window", image);
 
                 // Decode the image
-                decoder(image);
+             
             }
         }
     }
