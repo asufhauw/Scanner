@@ -19,15 +19,7 @@
 */
 
 
-#include <zxing/datamatrix/DataMatrixReader.h>
-#include <zxing/datamatrix/detector/Detector.h>
 #include <opencv2/opencv.hpp>
-#include <zxing/datamatrix/DataMatrixReader.h>
-#include <zxing/ReaderException.h>
-#include <zxing/datamatrix/detector/Detector.h>
-#include <zxing/common/GlobalHistogramBinarizer.h>
-#include <zxing/common/HybridBinarizer.h>
-#include <zxing/MatSource.h>
 // Include files to use the pylon API.
 #include <pylon/PylonIncludes.h>
 //#include <opencv2/objdetect.hpp>
@@ -43,10 +35,6 @@ using namespace std;
 
 // Number of images to be grabbed.
 static const uint32_t numofimages = 100;
-
-cv::Point toCvPoint(zxing::Ref<zxing::ResultPoint> resultPoint) {
-    return cv::Point(resultPoint->getX(), resultPoint->getY());
-}
 
 string type2str(int type) {
     string r;
@@ -71,21 +59,6 @@ string type2str(int type) {
     return r;
 }
 
-zxing::Ref<zxing::Result> decode(zxing::Ref<zxing::BinaryBitmap> image, zxing::DecodeHints hints) {
-    (void)hints;
-    zxing::datamatrix::Detector detector(image->getBlackMatrix());
-    zxing::Ref<zxing::DetectorResult> detectorResult(detector.detect());
-   
-    zxing::ArrayRef<zxing::Ref<zxing::ResultPoint> > points(detectorResult->getPoints());
-
-    zxing::datamatrix::Decoder decoder_;
-    zxing::Ref<zxing::DecoderResult> decoderResult(decoder_.decode(detectorResult->getBits()));
-
-    zxing::Ref<zxing::Result> result(
-        new zxing::Result(decoderResult->getText(), decoderResult->getRawBytes(), points, zxing::BarcodeFormat::DATA_MATRIX));
-
-    return result;
-}
 void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 {
     if (event == cv::EVENT_LBUTTONDOWN)
@@ -165,121 +138,69 @@ void getPoints(int event, int x, int y, int flags, void* userdata)
 
 
 
-void decoder(cv::Mat image)
+#include <dmtx.h>
+
+void decodeImg(cv::Mat img)
 {
-    // Create luminance  source
-    try
+
+    DmtxImage* dImg = dmtxImageCreate(img.data, img.cols, img.rows, DmtxPack8bppK); //DmtxPack24bppRGB
+    DmtxDecode* dDec = dmtxDecodeCreate(dImg, 1);
+    std::string qrcode;
+    cv::Mat outImg;
+    cv::cvtColor(img, outImg, cv::COLOR_GRAY2BGR);
+    DmtxTime timeout;
+    timeout.sec = 4;
+    timeout.usec = timeout.sec * 1000000;
+    DmtxRegion* dReg = dmtxRegionFindNext(dDec, NULL);
+    if (dReg != NULL)
     {
-        while (cv::waitKey(10) <= 0)
-            cv::imshow("window123", image);
-        zxing::Ref<zxing::LuminanceSource> source = MatSource::create(image);
-        zxing::Ref<zxing::Reader> reader;
-        reader.reset(new zxing::datamatrix::DataMatrixReader);
-        zxing::Ref<zxing::Binarizer> binarizer(new zxing::GlobalHistogramBinarizer(source));//HybridBinarizer GlobalHistogramBinarizer
-        zxing::Ref<zxing::BinaryBitmap> bitmap(new zxing::BinaryBitmap(binarizer));
-        zxing::DecodeHintType hint = zxing::DecodeHints::DATA_MATRIX_HINT | zxing::DecodeHints::TRYHARDER_HINT; // |  zxing::DecodeHints::TRYHARDER_HINT
-        //cv::imshow("window", bitmap->getBlackMatrix());
-        zxing::Ref<zxing::Result> result(reader->decode(bitmap, zxing::DecodeHints(hint)));
-
-        // Get result point count
-        int resultPointCount = result->getResultPoints()->size();
-
-        for (int j = 0; j < resultPointCount; j++) {
-
-            // Draw circle
-            cv::circle(image, toCvPoint(result->getResultPoints()[j]), 0, cv::Scalar(110, 220, 0), 2);
-
+        DmtxMessage* dMsg = dmtxDecodeMatrixRegion(dDec, dReg, DmtxUndefined);
+        if (dMsg != NULL)
+        {
+            qrcode = std::string((char*)dMsg->output);
+            std::cout << qrcode << std::endl;
         }
 
-        // Draw boundary on image
-        if (resultPointCount > 1) {
-            for (int j = 0; j < resultPointCount; j++) {
+        int height = dmtxDecodeGetProp(dDec, DmtxPropHeight);
+        DmtxVector2 topLeft, topRight, bottomLeft, bottomRight;
+        topLeft.X = 0;
+        topLeft.Y = 0;
 
-                // Get start result point
-                zxing::Ref<zxing::ResultPoint> previousResultPoint = (j > 0) ? result->getResultPoints()[j - 1] : result->getResultPoints()[resultPointCount - 1];
+        topRight.X = 1.0;
+        topRight.Y = 0;
 
-                // Draw line
-                cv::line(image, toCvPoint(previousResultPoint), toCvPoint(result->getResultPoints()[j]), cv::Scalar(110, 220, 0), 2, 8);
+        bottomRight.X = 1.0;
+        bottomRight.Y = 1.0;
 
-                // Update previous point
-                previousResultPoint = result->getResultPoints()[j];
+        bottomLeft.X = 0;
+        bottomLeft.Y = 1.0;
 
-            }
+        dmtxMatrix3VMultiplyBy(&topLeft, dReg->fit2raw);
+        dmtxMatrix3VMultiplyBy(&topRight, dReg->fit2raw);
+        dmtxMatrix3VMultiplyBy(&bottomLeft, dReg->fit2raw);
+        dmtxMatrix3VMultiplyBy(&bottomRight, dReg->fit2raw);
 
-        }
+        double rotate = (2 * M_PI) + atan2(topLeft.Y - bottomLeft.Y, bottomLeft.X - topLeft.X);
+        int rotateInt = (int)(rotate * 180.0 / M_PI + 0.5);
+        rotateInt = rotateInt >= 360 ? rotateInt - 360 : rotateInt;
 
-        if (resultPointCount > 0) {
-            // Draw text
-            cv::putText(image, result->getText()->getText(), toCvPoint(result->getResultPoints()[0]), cv::FONT_HERSHEY_PLAIN, 1, cv::Scalar(110, 220, 0));
-            cout << result->getText()->getText() << endl;
-        }
 
-        cv::imshow("window", image);
+        cv::Point p1(topLeft.X, height - 1 - topLeft.Y);
+        cv::Point p2(topRight.X, height - 1 - topRight.Y);
+        cv::Point p3(bottomRight.X, height - 1 - bottomRight.Y);
+        cv::Point p4(bottomLeft.X, height - 1 - bottomLeft.Y);
+        cv::line(outImg, cv::Point(p1.x, p1.y), cv::Point(p2.x, p2.y), cv::Scalar(0, 0, 255), 2);
+        cv::line(outImg, cv::Point(p2.x, p2.y), cv::Point(p3.x, p3.y), cv::Scalar(0, 0, 255), 2);
+        cv::line(outImg, cv::Point(p3.x, p3.y), cv::Point(p4.x, p4.y), cv::Scalar(0, 0, 255), 2);
+        cv::line(outImg, cv::Point(p4.x, p4.y), cv::Point(p1.x, p1.y), cv::Scalar(0, 0, 255), 2);
+        cv::imshow("DataMatrix", outImg);
         cv::waitKey(0);
     }
-    catch (const zxing::ReaderException& e) {
-        cerr << e.what() << " (ignoring)" << endl;
-
-    }
-    catch (const zxing::IllegalArgumentException& e) {
-        cerr << e.what() << " (ignoring)" << endl;
-    }
-    catch (const zxing::Exception& e) {
-        cerr << e.what() << " (ignoring)" << endl;
-    }
-    catch (const std::exception& e) {
-        cerr << e.what() << " (ignoring)" << endl;
-    }
-
-}
-
-void fixImage(cv::Mat img,cv::Mat oImg)
-{
-    // Find all contours in the image
-    vector<vector<cv::Point> > contours;
-    vector<cv::Vec4i> hierarchy;
-    cv::Mat imgGray, imgthres;
-
-    cv::cvtColor(img, imgGray, cv::COLOR_BGR2GRAY);
-
-    cv::threshold(imgGray, imgthres, 70, 255, cv::THRESH_BINARY);
-
-    while (cv::waitKey(10) <= 0)
-        cv::imshow("window", imgGray);
 
 
-    // Find all contours in the image
-    findContours(imgthres, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    cv::Point2f rect_points[4];
-    cv::Mat boxPoints2f, boxPointsCov;
-    cv::Rect rect;
-    for (size_t i = 0; i < contours.size(); i++) {
-        // Vertical rectangle
-        if (contours[i].size() < 100) continue;
+    dmtxDecodeDestroy(&dDec);
+    dmtxImageDestroy(&dImg);
 
-        rect = boundingRect(contours[i]);
-
-        cv::Mat boxed = cv::Mat(imgGray, rect);
-
-        while (cv::waitKey(10) <= 0)
-            cv::imshow("window", boxed);
-        cv::Point centerpoint = cv::Point(boxed.cols / 2, boxed.rows / 2);
-
-        double angle = (int)minAreaRect(contours[i]).angle % 90;
-        double scale = 1;
-        cv::Mat rot_mat = getRotationMatrix2D(centerpoint, angle, scale);
-        cv::Mat warp_rotate_dst;
-        warpAffine(boxed, boxed, rot_mat, boxed.size());
-        //cv::waitKey(0);
-        cv::imshow("window", boxed);
-        cv::waitKey(0);
-
-        decoder(boxed);
-        oImg = boxed.clone();
-        //return;
-    }
-    decoder(imgGray);
-    oImg = imgGray;
 }
 
 #include <pylon/BaslerUniversalInstantCamera.h>
@@ -339,10 +260,10 @@ int main(int argc, char* argv[])
         cv::namedWindow("window", 1);
 
         //set the callback function for any mouse event
-        cv::setMouseCallback("window", getPoints, &image);
+      //  cv::setMouseCallback("window", getPoints, &image);
         while (camera.IsGrabbing())
         {
-            camera.RetrieveResult(5000, ptrGrabResult, TimeoutHandling_ThrowException);
+            camera.RetrieveResult(1, ptrGrabResult, TimeoutHandling_ThrowException);
             // do something ...
           
             if (ptrGrabResult->GrabSucceeded())
@@ -353,11 +274,14 @@ int main(int argc, char* argv[])
                 image = cv::Mat(ptrGrabResult->GetHeight(), ptrGrabResult->GetWidth(), CV_8UC3, (uint8_t*)pylonImage.GetBuffer());
                
                 // set roi
-                while(cv::waitKey(10)<= 0)
-                    cv::imshow("window", image);
+              //  while(cv::waitKey(10)<= 0)
+              //      cv::imshow("window", image);
 
                 // Fix the image
-                fixImage(image, image);
+                cv::cvtColor(image, image, cv::COLOR_BGR2GRAY);
+                cv::imshow("window", image);
+                cv::waitKey(10);
+                decodeImg(image);
 
                 // show result image
             //    while (cv::waitKey(10) <= 0)
